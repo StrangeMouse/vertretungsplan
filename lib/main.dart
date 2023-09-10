@@ -17,6 +17,13 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: "Vertretungsplan LIO",
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+        //colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue),
+        //colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
+        //brightness: Brightness.dark,
+      ),
       home: Home(),
     );
   }
