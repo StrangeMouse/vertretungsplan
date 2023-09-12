@@ -9,6 +9,7 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+  PageController _pageController = PageController(initialPage: 100);
   @override
   void initState() {
     super.initState();
@@ -26,17 +27,40 @@ class _HomeState extends State<Home> {
       ),
       body: Padding(
         padding: EdgeInsets.all(4),
-        child: Column(
+        child: Row(
+          //mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            DateRow(),
+            PeriodColumn(),
             Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [PeriodColumn(), for (int i = 0; i < 5; i++) ClassColumn()],
+              child: PageView.builder(
+                controller: _pageController,
+                itemBuilder: (context, index) {
+                  return Column(
+                  //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    DateRow(),
+                    ClassRow(),
+                  ],
+                );
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class ClassRow extends StatelessWidget {
+  const ClassRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Row(
+        //crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [for (int i = 0; i < 5; i++) ClassColumn()],
       ),
     );
   }
@@ -48,7 +72,6 @@ class ClassColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      flex: 3,
       child: Column(
         children: [
           for (int i = 0; i < 12; i++) Class("M1", "LK, Mathe TUT", "L919"),
@@ -117,12 +140,49 @@ class PeriodColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      flex: 2,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [for (int i = 0; i < 12; i++) i == 3 ? PeriodNumber(1, "7:50", "8:35", true) : PeriodNumber(1, "7:50", "8:35", false)],
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      //crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PeriodSpacer(),
+        for (int i = 0; i < 12; i++) i == 3 ? PeriodNumber(1, "7:50", "8:35", true) : PeriodNumber(1, "7:50", "8:35", false)
+      ],
+    );
+  }
+}
+
+class PeriodSpacer extends StatelessWidget {
+  const PeriodSpacer({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(4),
+      child: Padding(
+        padding: EdgeInsets.all(4),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text("ho",
+                  style: Theme.of(context).primaryTextTheme.titleMedium!.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                        color: Theme.of(context).colorScheme.surface,
+                      )),
+            ),
+            Text(
+              "idk",
+              style: Theme.of(context).primaryTextTheme.labelMedium!.copyWith(
+                    fontWeight: FontWeight.bold,
+                    height: 1,
+                    color: Theme.of(context).colorScheme.surface,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -187,12 +247,7 @@ class DateRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: [
-        Spacer(
-          flex: 2,
-        ),
-        for (int i = 0; i < 5; i++) i == 3 ? Date("3", "Mon", true) : Date("4", "Tue", false)
-      ],
+      children: [for (int i = 0; i < 5; i++) i == 3 ? Date("3", "Mon", true) : Date("4", "Tue", false)],
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     );
   }
@@ -207,7 +262,6 @@ class Date extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      flex: 3,
       child: Padding(
         padding: EdgeInsets.all(4),
         child: ClipRRect(
