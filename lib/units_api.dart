@@ -39,6 +39,12 @@ String getCookiesFromHeader(Map<String, String> headers) {
   return cookies;
 }
 
+// Login to Webuntis -- Cookies stored in session object
+
+// ATTENTION -- Due to the server being programmed in a non standard (stupid) way the headers have
+// to define the content type as json but the type that is actually being sent needs to be form encoded
+// Therefore the payload is not defined as "json" in the request but as "data"
+
 Future<http.Response> untisLogin(String username, String password) async {
   var payload = {
     'school': 'jl-schule darmstadt',
@@ -122,13 +128,10 @@ Future<List<dynamic>> getTimeGridJSONFromServer() async {
   var headers = {
     'Accept':
         'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-    'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
     'Cookie': cookies,
   };
-  var response = await http.get(
-      Uri.parse('https://mese.webuntis.com/WebUntis/api/public/timegrid?schoolyearId=16'),
-      headers: headers);
+  var response = await http.get(Uri.parse('https://mese.webuntis.com/WebUntis/api/public/timegrid?schoolyearId=16'), headers: headers);
   var timeGridJSON = jsonDecode(response.body)["data"]["rows"];
   print(timeGridJSON.runtimeType);
   return timeGridJSON;
@@ -148,7 +151,13 @@ String getWeekdayFromDate(int date) {
   return DateFormat('EEEE').format(dateTime);
 }
 
-Future<Map<String, dynamic>> getCustomTimeTableJSON(String id, int year, int month, int day, List<String> courses) async {
+// DateTime getDatefromWeek(int week){
+//   DateTime weekDate = DateTime(DateTime.now().year, 1, 1).add(Duration(days: week * ));
+//   dateTime
+
+// }
+
+Future<String> getCustomTimeTableJSON(String id, int year, int month, int day, List<String> courses) async {
   Map<String, dynamic> timetableJSONDict = await getTimeTableJSONDict(id, year, month, day);
   Map<int, dynamic> coursesIdDict = await getCoursesIdDict(id, year, month, day);
   Map<int, dynamic> locationsIdDict = await getLocationsIdDict(id, year, month, day);
@@ -168,6 +177,92 @@ Future<Map<String, dynamic>> getCustomTimeTableJSON(String id, int year, int mon
         String weekday = getWeekdayFromDate(schoolClass["date"]);
         int lesson = getLessonNumberFromJSON(timeGridJSON, schoolClass["startTime"]);
 
+        if (!classesJSONDict[weekday]!.containsKey(lesson)) {
+          classesJSONDict[weekday]![lesson] = [];
+        }
+
+        Map<String, dynamic> tempLessonDict = {};
+        classesJSONDict[weekday]![lesson]!.add(tempLessonDict);
+        Map<String, dynamic> lessonDict = classesJSONDict[weekday]![lesson]!.last;
+
+        lessonDict["name"] = coursesIdDict[element["id"]]["name"];
+        lessonDict["longName"] = coursesIdDict[element["id"]]["longName"];
+
+        if (element["orgId"] != 0) {
+          lessonDict["orgName"] = coursesIdDict[element["orgId"]]["name"];
+          lessonDict["orgLongName"] = coursesIdDict[element["orgId"]]["longName"];
+        } else {
+          lessonDict["orgName"] = "";
+          lessonDict["orgLongName"] = "";
+        }
+
+        lessonDict["lessonText"] = schoolClass["lessonText"];
+        lessonDict["periodText"] = schoolClass["periodText"];
+        lessonDict["periodInfo"] = schoolClass["periodInfo"];
+        lessonDict["substText"] = schoolClass["substText"];
+        lessonDict["cellState"] = schoolClass["cellState"];
+        lessonDict["classState"] = element["state"];
+
+        for (var element in schoolClass["elements"]) {
+          if (element["type"] == 4) {
+            lessonDict["location"] = locationsIdDict[element["id"]]["name"];
+            lessonDict["longLocationName"] = locationsIdDict[element["id"]]["longName"];
+
+            if (element["orgId"] != 0) {
+              lessonDict["orgLocation"] = locationsIdDict[element["orgId"]]["name"];
+              lessonDict["orgLongLocationName"] = locationsIdDict[element["orgId"]]["longName"];
+            } else {
+              lessonDict["orgLocation"] = "";
+              lessonDict["orgLongLocationName"] = "";
+            }
+
+            lessonDict["locationState"] = element["state"];
+          }
+        }
+      }
+    }
+  }
+
+  return json.encode(classesJSONDict);
+}
+
+Future<Map<String, dynamic>> getCustomTimeTableDict(String id, int year, int month, int day, List<String> courses) async {
+  // Get the timetable from server as dictionary from json
+  Map<String, dynamic> timetableJSONDict = await getTimeTableJSONDict(id, year, month, day);
+  // Get the list of all available courses as a dictionary with the id as key
+  Map<int, dynamic> coursesIdDict = await getCoursesIdDict(id, year, month, day);
+  // Get the list of all available locations as a dictionary with the id as key
+  Map<int, dynamic> locationsIdDict = await getLocationsIdDict(id, year, month, day);
+  // Get the Timegrid as Json from server
+  List<dynamic> timeGridJSON = await getTimeGridJSONFromServer();
+
+  // Initialize the Custom Timetable Map with the weekdays
+  Map<String, dynamic> classesJSONDict = {
+    "Monday": {},
+    "Tuesday": {},
+    "Wednesday": {},
+    "Thursday": {},
+    "Friday": {},
+  };
+
+  // This does all the data processing and returns the custom timetable as a json with the structure of myjsonstructure.json
+  // ------------------------------------------------------------------------------------------------------------------------
+  // Go over each class element in the timetable dictionary
+  for (var schoolClass in timetableJSONDict["data"]["result"]["data"]["elementPeriods"][id]) {
+    // Go over each element in the class
+    // Elements are listed in a seperate area in the original json file and each element has an id. every class has a list of elements
+    // with ids that determine the name and location of this class 
+    for (var element in schoolClass["elements"]) {
+      //check if the element is a name type element AND if the name of this class is in the selected courses list
+      if (element["type"] == 3 && coursesIdDict[element["id"]]["name"] is String && courses.contains(coursesIdDict[element["id"]]["name"])) {
+        // Get the weeekday from the date inside the json to be able to put it in the right place in the custom Timetable
+        String weekday = getWeekdayFromDate(schoolClass["date"]);
+        // get the Number of the actual lesson on that day from the times listed inside the element
+        int lesson = getLessonNumberFromJSON(timeGridJSON, schoolClass["startTime"]);
+
+        // If the customt timetable dict does not already contain the number of the lesson as key, create a new dictionary at that key
+        // this is necessary because on might want to display multiple lessons in one period time -> therefore the actual classes are inside a list
+        // ATTENTION --- the key of the lesson is an *INT* not a String 
         if (!classesJSONDict[weekday]!.containsKey(lesson)) {
           classesJSONDict[weekday]![lesson] = [];
         }

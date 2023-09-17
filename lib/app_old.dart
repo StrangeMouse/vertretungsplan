@@ -28,9 +28,9 @@ class _HomeState extends State<Home> {
     return timetable;
   }
 
-  Future<Map<String, dynamic>> getCustomTimeTable() async {
+  Future<String> getCustomTimeTable() async {
     await untisLogin("LiO-Lernende", "Schueler.2021");
-    Map<String, dynamic> timetable = await getCustomTimeTableJSON("845", 2023, 9, 6, ["M 1", "e 7"]);
+    String timetable = await getCustomTimeTableJSON("845", 2023, 9, 6, ["M 1", "e 7"]);
     return timetable;
   }
 

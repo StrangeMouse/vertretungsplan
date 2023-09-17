@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vertretungsplan/units_api.dart';
+import 'package:intl/intl.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -10,9 +11,22 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   PageController _pageController = PageController(initialPage: 100);
+  late Future<List<dynamic>> timeGrid;
+  bool loggedIn = false;
+
+  Future<List<dynamic>> getTimeGrid(String username, String password) async {
+    // ATTENTION -- maybe not a good solution because login might expire
+    if (loggedIn == false) {
+      await untisLogin(username, password);
+      loggedIn = true;
+    }
+    return getTimeGridJSONFromServer();
+  }
+
   @override
   void initState() {
     super.initState();
+    timeGrid = getTimeGrid("LiO-Lernende", "Schueler.2021");
   }
 
   @override
@@ -26,22 +40,47 @@ class _HomeState extends State<Home> {
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       body: Padding(
-        padding: EdgeInsets.all(4),
+        padding: EdgeInsets.only(top: 4, bottom: 4, right: 4),
         child: Row(
           //mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            PeriodColumn(),
+            FutureBuilder(
+              future: timeGrid,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return PeriodColumn(snapshot.data!);
+                } else if (snapshot.hasError) {
+                  return FittedBox(
+                    child: Center(
+                      child: Text(
+                        "Error: ${snapshot.data}",
+                        style: Theme.of(context).textTheme.titleSmall!.copyWith(color: Theme.of(context).colorScheme.error),
+                      ),
+                    ),
+                  );
+                } else {
+                  return FittedBox(
+                    child: Center(
+                      child: Text(
+                        "Loading",
+                        style: Theme.of(context).textTheme.titleSmall!.copyWith(color: Theme.of(context).colorScheme.primary),
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
                 itemBuilder: (context, index) {
                   return Column(
-                  //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    DateRow(),
-                    ClassRow(),
-                  ],
-                );
+                    //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      DateRow(index),
+                      ClassRow(index),
+                    ],
+                  );
                 },
               ),
             ),
@@ -52,91 +91,227 @@ class _HomeState extends State<Home> {
   }
 }
 
-class ClassRow extends StatelessWidget {
-  const ClassRow({super.key});
+class ClassRow extends StatefulWidget {
+  ClassRow(this.pageIndex, {super.key});
+
+  final int pageIndex;
+  final List<String> weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+  @override
+  State<ClassRow> createState() => _ClassRowState();
+}
+
+class _ClassRowState extends State<ClassRow> {
+  late Future<Map<String, dynamic>> timetable;
+
+  // Get the timetable dictionary from the untis api using the index to generate a date to allow for multiple weeks
+  Future<Map<String, dynamic>> getTimetable(String username, String password) async {
+    await untisLogin(username, password);
+    DateTime requestWeek = DateTime.now().add(Duration(days: 7 * (widget.pageIndex - 100)));
+    //ATTENTION -- list of courses still needs updating, not automated yet
+    Map<String, dynamic> timetable =
+        await getCustomTimeTableDict("845", requestWeek.year, requestWeek.month, requestWeek.day, ["M 1", "e 7", "12F03", "pw 7", "PH 3"]);
+    return timetable;
+  }
+
+  // Returns the dictionary of lessons of a specific weekday. The weekday is specified by the index where 0 = Monday and 4 = Friday
+  Map<dynamic, dynamic> getColumnDict(Map<String, dynamic> timetableDict, int day) {
+    return timetableDict[widget.weekdays[day]];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    timetable = getTimetable("LiO-Lernende", "Schueler.2021");
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Row(
-        //crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [for (int i = 0; i < 5; i++) ClassColumn()],
-      ),
+    return FutureBuilder(
+      future: timetable,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return Expanded(
+            child: Row(
+              children: List.generate(5, (dayIndex) => ClassColumn(getColumnDict(snapshot.data!, dayIndex))),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          return Expanded(
+            child: Center(
+              child: Text(
+                "Error: ${snapshot.data}",
+                style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          );
+        } else {
+          return Expanded(
+            child: Center(
+              child: Text(
+                "Loading",
+                style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.primary),
+              ),
+            ),
+          );
+        }
+      },
     );
   }
 }
 
 class ClassColumn extends StatelessWidget {
-  const ClassColumn({super.key});
+  ClassColumn(this.classesDict, {super.key});
+  final Map<dynamic, dynamic> classesDict;
+
+  List<dynamic> getClassesList(Map<dynamic, dynamic> localClassesDict) {
+    List<dynamic> classList = List.generate(
+      12,
+      (index) {
+        if (localClassesDict.containsKey(index)) {
+          return localClassesDict[index];
+        } else {
+          List<dynamic> nullList = [
+            {"name": "null"}
+          ];
+          return nullList;
+        }
+      },
+    );
+    return classList;
+  }
 
   @override
   Widget build(BuildContext context) {
+    List<dynamic> classesList = getClassesList(classesDict);
     return Expanded(
       child: Column(
-        children: [
-          for (int i = 0; i < 12; i++) Class("M1", "LK, Mathe TUT", "L919"),
-        ],
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: List.generate(12, (index) => Class(classesList[index][0])),
       ),
     );
   }
 }
 
 class Class extends StatelessWidget {
-  const Class(this.name, this.longName, this.location, {super.key});
-
-  final String name;
-  final String longName;
-  final String location;
+  const Class(this.singleClassDict, {super.key});
+  final Map<String, dynamic> singleClassDict;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.all(2),
-        child: ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            // child: Material(
-            //   color: Theme.of(context).colorScheme.surfaceTint,
-            //   surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-            //   elevation: 100,
-            child: ColoredBox(
-              color: Theme.of(context).colorScheme.primary,
-              child: Padding(
-                padding: EdgeInsets.all(2),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    FittedBox(
-                      child: Text(
-                        name,
-                        style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
-                      ),
+    print(singleClassDict["cellState"]);
+    if (singleClassDict["name"] != "null") {
+      return Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(top: 2, bottom: 2, left: 2, right: 2),
+          child: ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              // child: Material(
+              //   color: Theme.of(context).colorScheme.surfaceTint,
+              //   surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
+              //   elevation: 100,
+              child: ColoredBox(
+                color: singleClassDict["cellState"] == "CANCEL"
+                    ? Theme.of(context).colorScheme.error
+                    : singleClassDict["cellState"] == "SUBSTITUTION"
+                        ? Theme.of(context).colorScheme.tertiary
+                        : Theme.of(context).colorScheme.primary,
+                child: Padding(
+                  padding: EdgeInsets.all(2),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        //FittedBox(
+                        //child:
+                        Text(
+                          singleClassDict["name"],
+                          style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
+                        ),
+                        //),
+                        //FittedBox(
+                        //child:
+                        Text(
+                          singleClassDict["longName"],
+                          style:
+                              Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.primaryContainer, fontSize: 7.5),
+                        ),
+                        //),
+                        //FittedBox(
+                        //child:
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            children: [
+                              Text(
+                                singleClassDict["location"],
+                                style: singleClassDict["locationState"] == "SUBSTITUTED" ? Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.error) : Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
+                              ),
+                              Text(
+                                //singleClassDict["originalLocation"],
+                                "H301",
+                                style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        //),
+                      ],
                     ),
-                    FittedBox(
-                      child: Text(
-                        longName,
-                        style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.primaryContainer),
-                      ),
-                    ),
-                    FittedBox(
-                      child: Text(
-                        location,
-                        style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            )),
-      ),
-    );
+              )),
+        ),
+      );
+    } else {
+      return Spacer();
+    }
   }
 }
 
 class PeriodColumn extends StatelessWidget {
-  const PeriodColumn({
-    super.key,
-  });
+  const PeriodColumn(this.timeGridJSON, {super.key});
+  final List<dynamic> timeGridJSON;
+
+  List<Widget> getPeriodColumnWidgets(List<dynamic> timeGrid) {
+    return List.generate(12, (index) {
+      int period = timeGrid[index]["period"];
+
+      int startTimeInt = timeGrid[index]["startTime"];
+      String startTimeStr = startTimeInt.toString().padLeft(4, '0');
+      String startTimehours = startTimeStr.substring(0, 2);
+      String startTimeMinutes = startTimeStr.substring(2);
+      String startTimeString = '$startTimehours:$startTimeMinutes';
+
+      int endTimeInt = timeGrid[index]["endTime"];
+      String endTimeStr = endTimeInt.toString().padLeft(4, '0');
+      String endTimehours = endTimeStr.substring(0, 2);
+      String endTimeMinutes = endTimeStr.substring(2);
+      String endTimeString = '$endTimehours:$endTimeMinutes';
+
+      DateTime now = DateTime.now();
+
+      if (index < 11) {
+        int nextStartTimeInt = timeGrid[index + 1]["startTime"];
+        String nextStartTimeStr = nextStartTimeInt.toString().padLeft(4, '0');
+        String nextStartTimehours = nextStartTimeStr.substring(0, 2);
+        String nextStartTimeMinutes = nextStartTimeStr.substring(2);
+
+        if (now.difference(now.copyWith(hour: int.parse(startTimehours), minute: int.parse(startTimeMinutes))) >= Duration.zero &&
+            now.difference(now.copyWith(hour: int.parse(nextStartTimehours), minute: int.parse(nextStartTimeMinutes))) < Duration.zero) {
+          return (PeriodNumber(period, startTimeString, endTimeString, true));
+        } else {
+          return (PeriodNumber(period, startTimeString, endTimeString, false));
+        }
+      } else if (now.difference(now.copyWith(hour: int.parse(startTimehours), minute: int.parse(startTimeMinutes))) >= Duration.zero &&
+          now.copyWith(hour: int.parse(endTimehours), minute: int.parse(endTimeMinutes)).difference(now) < Duration.zero) {
+        return (PeriodNumber(period, startTimeString, endTimeString, true));
+      } else {
+        return (PeriodNumber(period, startTimeString, endTimeString, false));
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +320,8 @@ class PeriodColumn extends StatelessWidget {
       //crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PeriodSpacer(),
-        for (int i = 0; i < 12; i++) i == 3 ? PeriodNumber(1, "7:50", "8:35", true) : PeriodNumber(1, "7:50", "8:35", false)
+        ...getPeriodColumnWidgets(timeGridJSON),
+        //for (int i = 0; i < 12; i++) i == 3 ? PeriodNumber(1, "7:50", "8:35", true) : PeriodNumber(1, "7:50", "8:35", false)
       ],
     );
   }
@@ -200,38 +376,44 @@ class PeriodNumber extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.all(4),
+        padding: EdgeInsets.only(top: 4, bottom: 4, left: 4, right: 4),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: ColoredBox(
             color: active ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.surface,
             child: Padding(
-              padding: EdgeInsets.only(left: 4, right: 4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Text(
-                    startTime,
-                    style: active
-                        ? Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outlineVariant, height: 1)
-                        : Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outline, height: 1),
-                  ),
-                  Text(
-                    number.toString(),
-                    style: active
-                        ? Theme.of(context).primaryTextTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold, height: 1)
-                        : Theme.of(context)
-                            .textTheme
-                            .titleMedium!
-                            .copyWith(color: Theme.of(context).colorScheme.secondary, fontWeight: FontWeight.bold, height: 1),
-                  ),
-                  Text(
-                    endTime,
-                    style: active
-                        ? Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outlineVariant, height: 1)
-                        : Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outline, height: 1),
-                  )
-                ],
+              padding: EdgeInsets.only(left: 4, right: 4, top: 4, bottom: 4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Text(
+                      startTime,
+                      style: active
+                          ? Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outlineVariant, height: 1)
+                          : Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outline, height: 1),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Text(
+                        number.toString(),
+                        style: active
+                            ? Theme.of(context).primaryTextTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold, height: 1)
+                            : Theme.of(context)
+                                .textTheme
+                                .titleMedium!
+                                .copyWith(color: Theme.of(context).colorScheme.secondary, fontWeight: FontWeight.bold, height: 1),
+                      ),
+                    ),
+                    Text(
+                      endTime,
+                      style: active
+                          ? Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outlineVariant, height: 1)
+                          : Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.outline, height: 1),
+                    )
+                  ],
+                ),
               ),
             ),
           ),
@@ -242,12 +424,29 @@ class PeriodNumber extends StatelessWidget {
 }
 
 class DateRow extends StatelessWidget {
-  const DateRow({super.key});
+  const DateRow(this.index, {super.key});
+  final int index;
+
+  List<Widget> getDateRowWidgets(int weekIndex) {
+    DateTime today = DateTime.now();
+    DateTime week = today.add(Duration(days: 7 * (weekIndex - 100)));
+    DateTime weekMonday = week.subtract(Duration(days: week.weekday - 1));
+    List<DateTime> weekDays = List.generate(5, (index) {
+      return weekMonday.add(Duration(days: index));
+    });
+    return List.generate(5, (index) {
+      if (today == weekDays[index]) {
+        return Date(weekDays[index].day.toString(), DateFormat("E").format(weekDays[index]), true);
+      } else {
+        return Date(weekDays[index].day.toString(), DateFormat("E").format(weekDays[index]), false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: [for (int i = 0; i < 5; i++) i == 3 ? Date("3", "Mon", true) : Date("4", "Tue", false)],
+      children: getDateRowWidgets(index),
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     );
   }
