@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vertretungsplan/units_api.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -13,11 +16,22 @@ class _HomeState extends State<Home> {
   PageController _pageController = PageController(initialPage: 100);
   late Future<List<dynamic>> timeGrid;
   bool loggedIn = false;
+  late Future<SharedPreferences> prefs;
 
-  Future<List<dynamic>> getTimeGrid(String username, String password) async {
+  int globalPageIndex = 0;
+
+  Future<List<dynamic>> getTimeGrid() async {
     // ATTENTION -- maybe not a good solution because login might expire
     if (loggedIn == false) {
-      await untisLogin(username, password);
+      SharedPreferences prefsInstance = await prefs;
+      if (prefsInstance.getString("username") != null && prefsInstance.getString("password") != null) {
+        Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
+        if (login.statusCode != 200) {
+          Navigator.pushNamed(context, "/login");
+        }
+      } else {
+        Navigator.pushNamed(context, "/login");
+      }
       loggedIn = true;
     }
     return getTimeGridJSONFromServer();
@@ -26,7 +40,8 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    timeGrid = getTimeGrid("LiO-Lernende", "Schueler.2021");
+    prefs = SharedPreferences.getInstance();
+    timeGrid = getTimeGrid();
   }
 
   @override
@@ -38,7 +53,19 @@ class _HomeState extends State<Home> {
           style: Theme.of(context).primaryTextTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.settings,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pushNamed(context, '/selectionScreen', arguments: globalPageIndex);
+            },
+          )
+        ]
       ),
+      
       body: Padding(
         padding: EdgeInsets.only(top: 4, bottom: 4, right: 4),
         child: Row(
@@ -63,7 +90,7 @@ class _HomeState extends State<Home> {
                     child: Center(
                       child: Text(
                         "Loading",
-                        style: Theme.of(context).textTheme.titleSmall!.copyWith(color: Theme.of(context).colorScheme.primary),
+                        style: Theme.of(context).textTheme.titleSmall!.copyWith(color: Theme.of(context).colorScheme.primary, fontSize: 10),
                       ),
                     ),
                   );
@@ -74,11 +101,12 @@ class _HomeState extends State<Home> {
               child: PageView.builder(
                 controller: _pageController,
                 itemBuilder: (context, index) {
+                  globalPageIndex = index;
                   return Column(
                     //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       DateRow(index),
-                      ClassRow(index),
+                      ClassRow(index, prefs),
                     ],
                   );
                 },
@@ -92,8 +120,8 @@ class _HomeState extends State<Home> {
 }
 
 class ClassRow extends StatefulWidget {
-  ClassRow(this.pageIndex, {super.key});
-
+  ClassRow(this.pageIndex, this.prefs, {super.key});
+  final Future<SharedPreferences> prefs;
   final int pageIndex;
   final List<String> weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -105,12 +133,32 @@ class _ClassRowState extends State<ClassRow> {
   late Future<Map<String, dynamic>> timetable;
 
   // Get the timetable dictionary from the untis api using the index to generate a date to allow for multiple weeks
-  Future<Map<String, dynamic>> getTimetable(String username, String password) async {
-    await untisLogin(username, password);
+  Future<Map<String, dynamic>> getTimetable() async {
+
+    SharedPreferences prefsInstance = await widget.prefs;
+
+    late Map<String, dynamic> timetable;
+
+    if(prefsInstance.getString("username") != null && prefsInstance.getString("password") != null){
+      Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
+      if(login.statusCode != 200){
+        Navigator.pushNamed(context, "/login");
+      }
+    }
+    else{
+      Navigator.pushNamed(context, "/login");
+    }
     DateTime requestWeek = DateTime.now().add(Duration(days: 7 * (widget.pageIndex - 100)));
-    //ATTENTION -- list of courses still needs updating, not automated yet
-    Map<String, dynamic> timetable =
-        await getCustomTimeTableDict("845", requestWeek.year, requestWeek.month, requestWeek.day, ["M 1", "e 7", "12F03", "pw 7", "PH 3"]);
+    //ATTENTION -- list of courses still needs updating, not automated yet !!!!!!!!!!!!!!!!!!!! IN PROGRESS
+    List<String>? courses = prefsInstance.getStringList('courses');
+    
+    if(courses != null){
+    timetable =
+        await getCustomTimeTableDict("845", requestWeek.year, requestWeek.month, requestWeek.day, courses);
+    }
+    else{
+      timetable = await getCustomTimeTableDict("845", requestWeek.year, requestWeek.month, requestWeek.day, []);
+    }
     return timetable;
   }
 
@@ -122,7 +170,7 @@ class _ClassRowState extends State<ClassRow> {
   @override
   void initState() {
     super.initState();
-    timetable = getTimetable("LiO-Lernende", "Schueler.2021");
+    timetable = getTimetable();
   }
 
   @override
@@ -181,27 +229,52 @@ class ClassColumn extends StatelessWidget {
     return classList;
   }
 
+  List<int> getFlexList(List classesList) {
+    List<int> flexList = List.filled(12, 1);
+    for (int i = 1; i < classesList.length; i++) {
+      if (classesList[i][0]["name"] != "null") {
+        if (mapEquals(classesList[i][0], classesList[i - 1][0])) {
+          flexList[i] = flexList[i - 1] + 1;
+          flexList[i - 1] = -1;
+        }
+      }
+    }
+    print(classesList);
+    print(flexList);
+    return flexList;
+  }
+
   @override
   Widget build(BuildContext context) {
     List<dynamic> classesList = getClassesList(classesDict);
+    List<int> flexList = getFlexList(classesList);
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: List.generate(12, (index) => Class(classesList[index][0])),
+        children: List.generate(12, (index){
+          if(flexList[index] != -1){
+          return Class(classesList[index][0], flexList[index]);
+          }
+          else{
+            return SizedBox.shrink();
+          }
+          }
+        ),
       ),
     );
   }
 }
 
 class Class extends StatelessWidget {
-  const Class(this.singleClassDict, {super.key});
+  const Class(this.singleClassDict, this.flex, {super.key});
   final Map<String, dynamic> singleClassDict;
+  final int flex;
 
   @override
   Widget build(BuildContext context) {
-    print(singleClassDict["cellState"]);
     if (singleClassDict["name"] != "null") {
       return Expanded(
+        flex: flex,
         child: Padding(
           padding: EdgeInsets.only(top: 2, bottom: 2, left: 2, right: 2),
           child: ClipRRect(
@@ -221,6 +294,7 @@ class Class extends StatelessWidget {
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         //FittedBox(
@@ -229,32 +303,27 @@ class Class extends StatelessWidget {
                           singleClassDict["name"],
                           style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
                         ),
+                        // Text(
+                        //   singleClassDict["longName"],
+                        //   style:
+                        //       Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.primaryContainer, fontSize: 7.5),
+                        // ),
                         //),
                         //FittedBox(
                         //child:
-                        Text(
-                          singleClassDict["longName"],
-                          style:
-                              Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.primaryContainer, fontSize: 7.5),
-                        ),
+
                         //),
                         //FittedBox(
                         //child:
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Row(
-                            children: [
-                              Text(
-                                singleClassDict["location"],
-                                style: singleClassDict["locationState"] == "SUBSTITUTED" ? Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.error) : Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
-                              ),
-                              Text(
-                                //singleClassDict["originalLocation"],
-                                "H301",
-                                style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
-                              ),
-                            ],
-                          ),
+                        Column(
+                          children: [
+                            singleClassDict["locationState"] == "SUBSTITUTED" ? Text(singleClassDict["orgLocation"],
+                                style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.inversePrimary, decorationThickness: 3, decorationColor:  Theme.of(context).colorScheme.inversePrimary, decoration: TextDecoration.lineThrough)) : SizedBox.shrink(),
+                            Text(
+                              (singleClassDict["location"] == null) ? "" : singleClassDict["location"],
+                              style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
+                            ),
+                          ],
                         ),
                         //),
                       ],
@@ -305,7 +374,7 @@ class PeriodColumn extends StatelessWidget {
           return (PeriodNumber(period, startTimeString, endTimeString, false));
         }
       } else if (now.difference(now.copyWith(hour: int.parse(startTimehours), minute: int.parse(startTimeMinutes))) >= Duration.zero &&
-          now.copyWith(hour: int.parse(endTimehours), minute: int.parse(endTimeMinutes)).difference(now) < Duration.zero) {
+                 now.difference(now.copyWith(hour: int.parse(endTimehours), minute: int.parse(endTimeMinutes))) < Duration.zero) {
         return (PeriodNumber(period, startTimeString, endTimeString, true));
       } else {
         return (PeriodNumber(period, startTimeString, endTimeString, false));

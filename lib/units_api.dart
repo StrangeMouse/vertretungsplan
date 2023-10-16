@@ -96,7 +96,7 @@ Future<List<String>> getCoursesList(String id, int year, int month, int day) asy
   List<String> courses = [];
   for (var course in timetableJSONDict["data"]["result"]["data"]["elements"]) {
     if (course["type"] == 3) {
-      courses.add(course["longName"]);
+      courses.add(course["name"]);
     }
   }
   return courses;

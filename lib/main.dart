@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:vertretungsplan/app.dart';
+import 'package:vertretungsplan/Screens/home.dart';
+import 'package:vertretungsplan/Screens/course_selection.dart';
+import 'package:vertretungsplan/Screens/login.dart';
 
 void main() {
   runApp(MyApp());
@@ -24,7 +26,13 @@ class _MyAppState extends State<MyApp> {
         //colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
         //brightness: Brightness.dark,
       ),
-      home: Home(),
+      routes: {
+        "/" : (context) => Home(),
+        //"/": (context) => LoginScreen(),
+        "/home" : (context) => Home(),
+        "/selectionScreen" : (context) => SelectionScreen(),
+        "/login": (context) => LoginScreen(),
+      },
     );
   }
 }
