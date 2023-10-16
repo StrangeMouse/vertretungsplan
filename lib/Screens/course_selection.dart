@@ -41,14 +41,14 @@ class _SelectionScreenState extends State<SelectionScreen> {
           style: Theme.of(context).primaryTextTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: FutureBuilder(
         future: classesList,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             return Padding(
-              padding: EdgeInsets.only(top: 3, bottom: 3),
+              padding: const EdgeInsets.only(top: 3, bottom: 3),
               child: ListView(
                 children: [
                   for (String course in snapshot.data!) CheckBoxElement(course, selectedCoursesList!, prefsInstance),
@@ -77,7 +77,7 @@ class _SelectionScreenState extends State<SelectionScreen> {
 }
 
 class CheckBoxElement extends StatefulWidget {
-  CheckBoxElement(this.title, this.selectedCoursesList, this.prefsInstance, {super.key});
+  const CheckBoxElement(this.title, this.selectedCoursesList, this.prefsInstance, {super.key});
 
   final List<String> selectedCoursesList;
   final SharedPreferences prefsInstance;
@@ -91,6 +91,7 @@ class _CheckBoxElementState extends State<CheckBoxElement> {
 
   late bool checked;
 
+  @override
   void initState() {
     super.initState();
     if(widget.selectedCoursesList.contains(widget.title)){
@@ -103,7 +104,7 @@ class _CheckBoxElementState extends State<CheckBoxElement> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(top: 3, bottom: 3, left: 6, right: 6),
+      padding: const EdgeInsets.only(top: 3, bottom: 3, left: 6, right: 6),
       child: Material(
         surfaceTintColor: Theme.of(context).colorScheme.primary,
         elevation: 2,

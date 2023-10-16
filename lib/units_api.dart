@@ -133,7 +133,6 @@ Future<List<dynamic>> getTimeGridJSONFromServer() async {
   };
   var response = await http.get(Uri.parse('https://mese.webuntis.com/WebUntis/api/public/timegrid?schoolyearId=16'), headers: headers);
   var timeGridJSON = jsonDecode(response.body)["data"]["rows"];
-  print(timeGridJSON.runtimeType);
   return timeGridJSON;
 }
 

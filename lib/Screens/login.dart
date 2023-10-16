@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString("username", username);
     await prefs.setString("password", password);
-    Navigator.pushNamed(context, "/home");
+    if (context.mounted) Navigator.pushNamed(context, "/home");
   }
 
   @override
@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: Theme.of(context).primaryTextTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: TextField(
               controller: usernameController,
               decoration: InputDecoration(
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: TextField(
               controller: passwordController,
               obscureText: true,
@@ -84,21 +84,21 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           (loginStatus == null)
-              ? SizedBox.shrink()
+              ? const SizedBox.shrink()
               : FutureBuilder(
                   future: loginStatus,
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       if (snapshot.data!.statusCode != 200) {
                         return Padding(
-                          padding: EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(10),
                           child: Text("Invalid username or password", style: Theme.of(context).textTheme.titleSmall!.copyWith(color:Theme.of(context).colorScheme.error),),
                         );
                       }
                       else{
                         saveLogin(usernameController.text, passwordController.text);
                         return Padding(
-                          padding: EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(10),
                           child: Text(
                             "Logged In",
                             style: Theme.of(context).textTheme.titleSmall!.copyWith(color: Theme.of(context).colorScheme.error),
@@ -108,25 +108,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     }
                     if (snapshot.hasError) {
                       return Padding(
-                        padding: EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(10),
                         child: Text("Error: ${snapshot.data}"),
                       );
                     } else {
-                      return SizedBox.shrink();
+                      return const SizedBox.shrink();
                     }
                   },
                 ),
           Padding(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: ElevatedButton(
                 onPressed: () {
                   setState(() {
                     loginStatus = login(usernameController.text, passwordController.text);
                   });
                 },
-                child: Text("Login")),
+                child: const Text("Login")),
           ),
-          Expanded(
+          const Expanded(
             flex: 3,
             child: SizedBox.shrink(),
           )

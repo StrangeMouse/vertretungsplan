@@ -13,7 +13,7 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  PageController _pageController = PageController(initialPage: 100);
+  final PageController _pageController = PageController(initialPage: 100);
   late Future<List<dynamic>> timeGrid;
   bool loggedIn = false;
   late Future<SharedPreferences> prefs;
@@ -27,10 +27,10 @@ class _HomeState extends State<Home> {
       if (prefsInstance.getString("username") != null && prefsInstance.getString("password") != null) {
         Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
         if (login.statusCode != 200) {
-          Navigator.pushNamed(context, "/login");
+          if (context.mounted) Navigator.pushNamed(context, "/login");
         }
       } else {
-        Navigator.pushNamed(context, "/login");
+        if (context.mounted) Navigator.pushNamed(context, "/login");
       }
       loggedIn = true;
     }
@@ -55,7 +55,7 @@ class _HomeState extends State<Home> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         actions: [
           IconButton(
-            icon: Icon(
+            icon: const Icon(
               Icons.settings,
               color: Colors.white,
             ),
@@ -67,7 +67,7 @@ class _HomeState extends State<Home> {
       ),
       
       body: Padding(
-        padding: EdgeInsets.only(top: 4, bottom: 4, right: 4),
+        padding: const EdgeInsets.only(top: 4, bottom: 4, right: 4),
         child: Row(
           //mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -142,11 +142,11 @@ class _ClassRowState extends State<ClassRow> {
     if(prefsInstance.getString("username") != null && prefsInstance.getString("password") != null){
       Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
       if(login.statusCode != 200){
-        Navigator.pushNamed(context, "/login");
+        if (context.mounted) Navigator.pushNamed(context, "/login");
       }
     }
     else{
-      Navigator.pushNamed(context, "/login");
+      if (context.mounted) Navigator.pushNamed(context, "/login");
     }
     DateTime requestWeek = DateTime.now().add(Duration(days: 7 * (widget.pageIndex - 100)));
     //ATTENTION -- list of courses still needs updating, not automated yet !!!!!!!!!!!!!!!!!!!! IN PROGRESS
@@ -209,7 +209,7 @@ class _ClassRowState extends State<ClassRow> {
 }
 
 class ClassColumn extends StatelessWidget {
-  ClassColumn(this.classesDict, {super.key});
+  const ClassColumn(this.classesDict, {super.key});
   final Map<dynamic, dynamic> classesDict;
 
   List<dynamic> getClassesList(Map<dynamic, dynamic> localClassesDict) {
@@ -239,8 +239,10 @@ class ClassColumn extends StatelessWidget {
         }
       }
     }
-    print(classesList);
-    print(flexList);
+    if (kDebugMode) {
+      print(classesList);
+      print(flexList);
+    }
     return flexList;
   }
 
@@ -256,7 +258,7 @@ class ClassColumn extends StatelessWidget {
           return Class(classesList[index][0], flexList[index]);
           }
           else{
-            return SizedBox.shrink();
+            return const SizedBox.shrink();
           }
           }
         ),
@@ -276,7 +278,7 @@ class Class extends StatelessWidget {
       return Expanded(
         flex: flex,
         child: Padding(
-          padding: EdgeInsets.only(top: 2, bottom: 2, left: 2, right: 2),
+          padding: const EdgeInsets.only(top: 2, bottom: 2, left: 2, right: 2),
           child: ClipRRect(
               borderRadius: BorderRadius.circular(5),
               // child: Material(
@@ -290,7 +292,7 @@ class Class extends StatelessWidget {
                         ? Theme.of(context).colorScheme.tertiary
                         : Theme.of(context).colorScheme.primary,
                 child: Padding(
-                  padding: EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(2),
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Column(
@@ -318,7 +320,7 @@ class Class extends StatelessWidget {
                         Column(
                           children: [
                             singleClassDict["locationState"] == "SUBSTITUTED" ? Text(singleClassDict["orgLocation"],
-                                style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.inversePrimary, decorationThickness: 3, decorationColor:  Theme.of(context).colorScheme.inversePrimary, decoration: TextDecoration.lineThrough)) : SizedBox.shrink(),
+                                style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.inversePrimary, decorationThickness: 3, decorationColor:  Theme.of(context).colorScheme.inversePrimary, decoration: TextDecoration.lineThrough)) : const SizedBox.shrink(),
                             Text(
                               (singleClassDict["location"] == null) ? "" : singleClassDict["location"],
                               style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
@@ -334,7 +336,7 @@ class Class extends StatelessWidget {
         ),
       );
     } else {
-      return Spacer();
+      return const Spacer();
     }
   }
 }
@@ -388,7 +390,7 @@ class PeriodColumn extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       //crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PeriodSpacer(),
+        const PeriodSpacer(),
         ...getPeriodColumnWidgets(timeGridJSON),
         //for (int i = 0; i < 12; i++) i == 3 ? PeriodNumber(1, "7:50", "8:35", true) : PeriodNumber(1, "7:50", "8:35", false)
       ],
@@ -404,9 +406,9 @@ class PeriodSpacer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.all(4),
+      padding: const EdgeInsets.all(4),
       child: Padding(
-        padding: EdgeInsets.all(4),
+        padding: const EdgeInsets.all(4),
         child: Column(
           children: [
             Padding(
@@ -445,13 +447,13 @@ class PeriodNumber extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.only(top: 4, bottom: 4, left: 4, right: 4),
+        padding: const EdgeInsets.only(top: 4, bottom: 4, left: 4, right: 4),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: ColoredBox(
             color: active ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.surface,
             child: Padding(
-              padding: EdgeInsets.only(left: 4, right: 4, top: 4, bottom: 4),
+              padding: const EdgeInsets.only(left: 4, right: 4, top: 4, bottom: 4),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Column(
@@ -515,14 +517,14 @@ class DateRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: getDateRowWidgets(index),
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: getDateRowWidgets(index),
     );
   }
 }
 
 class Date extends StatelessWidget {
-  Date(this.date, this.weekday, this.active, {super.key});
+  const Date(this.date, this.weekday, this.active, {super.key});
   final String weekday;
   final String date;
   final bool active;
@@ -531,13 +533,13 @@ class Date extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.all(4),
+        padding: const EdgeInsets.all(4),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: ColoredBox(
             color: active ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.surface,
             child: Padding(
-              padding: EdgeInsets.all(4),
+              padding: const EdgeInsets.all(4),
               child: Column(
                 children: [
                   Padding(

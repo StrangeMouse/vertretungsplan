@@ -4,7 +4,7 @@ import 'package:vertretungsplan/Screens/course_selection.dart';
 import 'package:vertretungsplan/Screens/login.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -27,11 +27,11 @@ class _MyAppState extends State<MyApp> {
         //brightness: Brightness.dark,
       ),
       routes: {
-        "/" : (context) => Home(),
+        "/" : (context) => const Home(),
         //"/": (context) => LoginScreen(),
-        "/home" : (context) => Home(),
-        "/selectionScreen" : (context) => SelectionScreen(),
-        "/login": (context) => LoginScreen(),
+        "/home" : (context) => const Home(),
+        "/selectionScreen" : (context) => const SelectionScreen(),
+        "/login": (context) => const LoginScreen(),
       },
     );
   }
