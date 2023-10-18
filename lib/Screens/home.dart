@@ -20,20 +20,22 @@ class _HomeState extends State<Home> {
 
   int globalPageIndex = 0;
 
+  
+
   Future<List<dynamic>> getTimeGrid() async {
-    // ATTENTION -- maybe not a good solution because login might expire
-    if (loggedIn == false) {
       SharedPreferences prefsInstance = await prefs;
       if (prefsInstance.getString("username") != null && prefsInstance.getString("password") != null) {
         Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
         if (login.statusCode != 200) {
+          if (kDebugMode) {
+            print("ATTENTION!!!! NAVIGATED");
+          }
           if (context.mounted) Navigator.pushNamed(context, "/login");
         }
       } else {
+        
         if (context.mounted) Navigator.pushNamed(context, "/login");
       }
-      loggedIn = true;
-    }
     return getTimeGridJSONFromServer();
   }
 
@@ -53,6 +55,7 @@ class _HomeState extends State<Home> {
           style: Theme.of(context).primaryTextTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(
@@ -142,10 +145,16 @@ class _ClassRowState extends State<ClassRow> {
     if(prefsInstance.getString("username") != null && prefsInstance.getString("password") != null){
       Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
       if(login.statusCode != 200){
+        if (kDebugMode) {
+          print("ATTENTION!!!! NAVIGATED");
+        }
         if (context.mounted) Navigator.pushNamed(context, "/login");
       }
     }
     else{
+      if (kDebugMode) {
+        print("ATTENTION!!!! NAVIGATED");
+      }
       if (context.mounted) Navigator.pushNamed(context, "/login");
     }
     DateTime requestWeek = DateTime.now().add(Duration(days: 7 * (widget.pageIndex - 100)));

@@ -42,6 +42,19 @@ class _SelectionScreenState extends State<SelectionScreen> {
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.logout,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              prefsInstance.remove('username');
+              prefsInstance.remove('password');
+              Navigator.pushNamed(context, '/login');
+            },
+          )
+        ],
       ),
       body: FutureBuilder(
         future: classesList,
@@ -88,19 +101,18 @@ class CheckBoxElement extends StatefulWidget {
 }
 
 class _CheckBoxElementState extends State<CheckBoxElement> {
-
   late bool checked;
 
   @override
   void initState() {
     super.initState();
-    if(widget.selectedCoursesList.contains(widget.title)){
+    if (widget.selectedCoursesList.contains(widget.title)) {
       checked = true;
-    }
-    else{
+    } else {
       checked = false;
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -114,15 +126,15 @@ class _CheckBoxElementState extends State<CheckBoxElement> {
             title: Text(widget.title, style: Theme.of(context).textTheme.titleMedium!.copyWith(color: Theme.of(context).colorScheme.primary)),
             value: checked,
             onChanged: (value) async {
-              if(value!){
+              if (value!) {
                 widget.selectedCoursesList.add(widget.title);
                 await widget.prefsInstance.setStringList('courses', widget.selectedCoursesList);
-              }
-              else{
+              } else {
                 widget.selectedCoursesList.remove(widget.title);
                 await widget.prefsInstance.setStringList('courses', widget.selectedCoursesList);
               }
-              setState(() {
+              setState(
+                () {
                   checked = value;
                 },
               );

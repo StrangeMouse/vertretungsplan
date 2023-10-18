@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           padding: const EdgeInsets.all(10),
                           child: Text(
                             "Logged In",
-                            style: Theme.of(context).textTheme.titleSmall!.copyWith(color: Theme.of(context).colorScheme.error),
+                            style: Theme.of(context).textTheme.titleSmall!.copyWith(color: Theme.of(context).colorScheme.tertiary),
                           ),
                         );
                       }
