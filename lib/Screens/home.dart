@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vertretungsplan/units_api.dart';
@@ -350,9 +352,15 @@ class Class extends StatelessWidget {
   }
 }
 
-class PeriodColumn extends StatelessWidget {
+class PeriodColumn extends StatefulWidget {
   const PeriodColumn(this.timeGridJSON, {super.key});
   final List<dynamic> timeGridJSON;
+
+  @override
+  State<PeriodColumn> createState() => _PeriodColumnState();
+}
+
+class _PeriodColumnState extends State<PeriodColumn> {
 
   List<Widget> getPeriodColumnWidgets(List<dynamic> timeGrid) {
     return List.generate(12, (index) {
@@ -394,13 +402,23 @@ class PeriodColumn extends StatelessWidget {
   }
 
   @override
+  void initState() {
+    super.initState();
+    Timer.periodic(Duration(seconds: 5), (timer) {
+      setState(() {
+      
+    },
+    );});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       //crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PeriodSpacer(),
-        ...getPeriodColumnWidgets(timeGridJSON),
+        ...getPeriodColumnWidgets(widget.timeGridJSON),
         //for (int i = 0; i < 12; i++) i == 3 ? PeriodNumber(1, "7:50", "8:35", true) : PeriodNumber(1, "7:50", "8:35", false)
       ],
     );
