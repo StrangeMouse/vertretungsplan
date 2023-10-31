@@ -2,8 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:vertretungsplan/Screens/home.dart';
 import 'package:vertretungsplan/Screens/course_selection.dart';
 import 'package:vertretungsplan/Screens/login.dart';
+import 'package:flutter/services.dart';
+import 'dart:ui';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  FlutterView view = WidgetsBinding.instance.platformDispatcher.views.first;
+  Size size = view.physicalSize / view.devicePixelRatio;
+  final double screenWidth = size.width;
+  if (screenWidth < 500) {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+  }
   runApp(const MyApp());
 }
 
