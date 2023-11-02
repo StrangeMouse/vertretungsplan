@@ -131,7 +131,8 @@ Future<List<dynamic>> getTimeGridJSONFromServer() async {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
     'Cookie': cookies,
   };
-  var response = await http.get(Uri.parse('https://mese.webuntis.com/WebUntis/api/public/timegrid?schoolyearId=16'), headers: headers);
+  // ATTENTION -- not best solution (setting year id to 0) as it relies on the server to return the data for the current school year even with a wrong id
+  var response = await http.get(Uri.parse('https://mese.webuntis.com/WebUntis/api/public/timegrid?schoolyearId=0'), headers: headers);
   var timeGridJSON = jsonDecode(response.body)["data"]["rows"];
   return timeGridJSON;
 }
@@ -250,7 +251,7 @@ Future<Map<String, dynamic>> getCustomTimeTableDict(String id, int year, int mon
   for (var schoolClass in timetableJSONDict["data"]["result"]["data"]["elementPeriods"][id]) {
     // Go over each element in the class
     // Elements are listed in a seperate area in the original json file and each element has an id. every class has a list of elements
-    // with ids that determine the name and location of this class 
+    // with ids that determine the name and location of this class
     for (var element in schoolClass["elements"]) {
       //check if the element is a name type element AND if the name of this class is in the selected courses list
       if (element["type"] == 3 && coursesIdDict[element["id"]]["name"] is String && courses.contains(coursesIdDict[element["id"]]["name"])) {
@@ -261,11 +262,10 @@ Future<Map<String, dynamic>> getCustomTimeTableDict(String id, int year, int mon
 
         // If the customt timetable dict does not already contain the number of the lesson as key, create a new dictionary at that key
         // this is necessary because on might want to display multiple lessons in one period time -> therefore the actual classes are inside a list
-        // ATTENTION --- the key of the lesson is an *INT* not a String 
+        // ATTENTION --- the key of the lesson is an *INT* not a String
         if (!classesJSONDict[weekday]!.containsKey(lesson)) {
           classesJSONDict[weekday]![lesson] = [];
         }
-
 
         Map<String, dynamic> tempLessonDict = {};
         classesJSONDict[weekday]![lesson]!.add(tempLessonDict);
