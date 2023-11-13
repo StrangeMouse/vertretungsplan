@@ -18,10 +18,12 @@ class _SelectionScreenState extends State<SelectionScreen> {
   Future<List<String>> getClassesListAndInitPrefs(String username, String password, int pageIndex) async {
     await untisLogin(username, password);
     prefsInstance = await prefs;
-    selectedCoursesList = prefsInstance.getStringList('courses');
+    String gradeId = prefsInstance.getInt("gradeId")!.toString();
+    selectedCoursesList = prefsInstance.getStringList("${gradeId}courses");
     selectedCoursesList ??= [];
     DateTime requestWeek = DateTime.now().add(Duration(days: 7 * (pageIndex - 100)));
-    return getCoursesList("845", requestWeek.year, requestWeek.month, requestWeek.day);
+    String id = prefsInstance.getInt("gradeId")!.toString();
+    return getCoursesList(id, requestWeek.year, requestWeek.month, requestWeek.day);
   }
 
   @override
@@ -49,9 +51,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
               color: Colors.white,
             ),
             onPressed: () {
-              prefsInstance.remove('username');
-              prefsInstance.remove('password');
-              Navigator.pushNamed(context, '/login');
+              prefsInstance.remove('gradeId');
+              Navigator.pushNamed(context, '/gradeSelection');
             },
           )
         ],
@@ -126,12 +127,13 @@ class _CheckBoxElementState extends State<CheckBoxElement> {
             title: Text(widget.title, style: Theme.of(context).textTheme.titleMedium!.copyWith(color: Theme.of(context).colorScheme.primary)),
             value: checked,
             onChanged: (value) async {
+              String gradeId = widget.prefsInstance.getInt("gradeId")!.toString();
               if (value!) {
                 widget.selectedCoursesList.add(widget.title);
-                await widget.prefsInstance.setStringList('courses', widget.selectedCoursesList);
+                await widget.prefsInstance.setStringList("${gradeId}courses", widget.selectedCoursesList);
               } else {
                 widget.selectedCoursesList.remove(widget.title);
-                await widget.prefsInstance.setStringList('courses', widget.selectedCoursesList);
+                await widget.prefsInstance.setStringList("${gradeId}courses", widget.selectedCoursesList);
               }
               setState(
                 () {

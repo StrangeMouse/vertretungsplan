@@ -312,3 +312,40 @@ Future<Map<String, dynamic>> getCustomTimeTableDict(String id, int year, int mon
   log(classesJSONDict.toString());
   return classesJSONDict;
 }
+
+Future<Map<String, int>> getGradeIdDict() async {
+  Map<String, String> params = {
+    'type': '1',
+    'isMyTimetableSelected': 'false',
+  };
+
+  Map<String, String> headers = {
+    'authority': 'mese.webuntis.com',
+    'accept': 'application/json',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 OPR/103.0.0.0',
+    'Cookie': cookies,
+  };
+
+  var response = await session.get(Uri.parse('https://mese.webuntis.com/WebUntis/api/public/timetable/weekly/pageconfig').replace(queryParameters: params), headers: headers,);
+  Map<String, dynamic> gradeJson = json.decode(response.body);
+  print("JKLSDFJKL:SDFJKLD:SJSDFKL:JFKL:SDFJKL:SDJ$gradeJson");
+
+  Map<String, int> classMap = {};
+
+  if (gradeJson.containsKey("data") && gradeJson["data"].containsKey("elements")) {
+    print("hello");
+    print(gradeJson);
+    var elements = gradeJson["data"]["elements"];
+    print(gradeJson);
+
+    for (var element in elements) {
+      if (element.containsKey("name") && element.containsKey("id")) {
+        String className = element["name"];
+        int classId = element["id"];
+        classMap[className] = classId;
+      }
+    }
+  }
+  print(classMap);
+  return classMap;
+}

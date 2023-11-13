@@ -22,11 +22,10 @@ class _HomeState extends State<Home> {
 
   int globalPageIndex = 0;
 
-  
-
   Future<List<dynamic>> getTimeGrid() async {
-      SharedPreferences prefsInstance = await prefs;
-      if (prefsInstance.getString("username") != null && prefsInstance.getString("password") != null) {
+    SharedPreferences prefsInstance = await prefs;
+    if (prefsInstance.getString("username") != null && prefsInstance.getString("password") != null) {
+      if (prefsInstance.getInt("gradeId") != null) {
         Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
         if (login.statusCode != 200) {
           if (kDebugMode) {
@@ -35,9 +34,14 @@ class _HomeState extends State<Home> {
           if (context.mounted) Navigator.pushNamed(context, "/login");
         }
       } else {
-        
-        if (context.mounted) Navigator.pushNamed(context, "/login");
+        if (kDebugMode) {
+          print("ATTENTION!!!! NAVIGATED TO GRADE SELECTION");
+        }
+        if (context.mounted) Navigator.pushNamed(context, "/gradeSelection");
       }
+    } else {
+      if (context.mounted) Navigator.pushNamed(context, "/login");
+    }
     return getTimeGridJSONFromServer();
   }
 
@@ -52,25 +56,23 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Vertretungsplan LIO",
-          style: Theme.of(context).primaryTextTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.settings,
-              color: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.pushNamed(context, '/selectionScreen', arguments: globalPageIndex);
-            },
-          )
-        ]
-      ),
-      
+          title: Text(
+            "Vertretungsplan LIO",
+            style: Theme.of(context).primaryTextTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              icon: const Icon(
+                Icons.settings,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/selectionScreen', arguments: globalPageIndex);
+              },
+            )
+          ]),
       body: Padding(
         padding: const EdgeInsets.only(top: 4, bottom: 4, right: 4),
         child: Row(
@@ -139,36 +141,39 @@ class _ClassRowState extends State<ClassRow> {
 
   // Get the timetable dictionary from the untis api using the index to generate a date to allow for multiple weeks
   Future<Map<String, dynamic>> getTimetable() async {
-
     SharedPreferences prefsInstance = await widget.prefs;
 
     late Map<String, dynamic> timetable;
 
-    if(prefsInstance.getString("username") != null && prefsInstance.getString("password") != null){
-      Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
-      if(login.statusCode != 200){
-        if (kDebugMode) {
-          print("ATTENTION!!!! NAVIGATED");
+    if (prefsInstance.getString("username") != null && prefsInstance.getString("password") != null) {
+      if (prefsInstance.getInt("gradeId") != null) {
+        Response login = await untisLogin(prefsInstance.getString("username")!, prefsInstance.getString("password")!);
+        if (login.statusCode != 200) {
+          if (kDebugMode) {
+            print("ATTENTION!!!! NAVIGATED");
+          }
+          if (context.mounted) Navigator.pushNamed(context, "/login");
         }
-        if (context.mounted) Navigator.pushNamed(context, "/login");
+      } else {
+        Navigator.pushNamed(context, "/gradeSelection");
       }
-    }
-    else{
+    } else {
       if (kDebugMode) {
         print("ATTENTION!!!! NAVIGATED");
       }
       if (context.mounted) Navigator.pushNamed(context, "/login");
     }
     DateTime requestWeek = DateTime.now().add(Duration(days: 7 * (widget.pageIndex - 100)));
-    //ATTENTION -- list of courses still needs updating, not automated yet !!!!!!!!!!!!!!!!!!!! IN PROGRESS
-    List<String>? courses = prefsInstance.getStringList('courses');
-    
-    if(courses != null){
-    timetable =
-        await getCustomTimeTableDict("845", requestWeek.year, requestWeek.month, requestWeek.day, courses);
-    }
-    else{
-      timetable = await getCustomTimeTableDict("845", requestWeek.year, requestWeek.month, requestWeek.day, []);
+
+    String gradeId = prefsInstance.getInt("gradeId")!.toString();
+    List<String>? courses = prefsInstance.getStringList("${gradeId}courses");
+
+    if (courses != null) {
+      String id = prefsInstance.getInt("gradeId")!.toString();
+      timetable = await getCustomTimeTableDict(id, requestWeek.year, requestWeek.month, requestWeek.day, courses);
+    } else {
+      String id = prefsInstance.getInt("gradeId")!.toString();
+      timetable = await getCustomTimeTableDict(id, requestWeek.year, requestWeek.month, requestWeek.day, []);
     }
     return timetable;
   }
@@ -264,15 +269,13 @@ class ClassColumn extends StatelessWidget {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: List.generate(12, (index){
-          if(flexList[index] != -1){
-          return Class(classesList[index][0], flexList[index]);
-          }
-          else{
+        children: List.generate(12, (index) {
+          if (flexList[index] != -1) {
+            return Class(classesList[index][0], flexList[index]);
+          } else {
             return const SizedBox.shrink();
           }
-          }
-        ),
+        }),
       ),
     );
   }
@@ -330,8 +333,14 @@ class Class extends StatelessWidget {
                         //child:
                         Column(
                           children: [
-                            singleClassDict["locationState"] == "SUBSTITUTED" ? Text(singleClassDict["orgLocation"],
-                                style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.inversePrimary, decorationThickness: 3, decorationColor:  Theme.of(context).colorScheme.inversePrimary, decoration: TextDecoration.lineThrough)) : const SizedBox.shrink(),
+                            singleClassDict["locationState"] == "SUBSTITUTED"
+                                ? Text(singleClassDict["orgLocation"],
+                                    style: Theme.of(context).textTheme.labelSmall!.copyWith(
+                                        color: Theme.of(context).colorScheme.inversePrimary,
+                                        decorationThickness: 3,
+                                        decorationColor: Theme.of(context).colorScheme.inversePrimary,
+                                        decoration: TextDecoration.lineThrough))
+                                : const SizedBox.shrink(),
                             Text(
                               (singleClassDict["location"] == null) ? "" : singleClassDict["location"],
                               style: Theme.of(context).textTheme.labelSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),
@@ -361,7 +370,6 @@ class PeriodColumn extends StatefulWidget {
 }
 
 class _PeriodColumnState extends State<PeriodColumn> {
-
   List<Widget> getPeriodColumnWidgets(List<dynamic> timeGrid) {
     return List.generate(12, (index) {
       int period = timeGrid[index]["period"];
@@ -393,7 +401,7 @@ class _PeriodColumnState extends State<PeriodColumn> {
           return (PeriodNumber(period, startTimeString, endTimeString, false));
         }
       } else if (now.difference(now.copyWith(hour: int.parse(startTimehours), minute: int.parse(startTimeMinutes))) >= Duration.zero &&
-                 now.difference(now.copyWith(hour: int.parse(endTimehours), minute: int.parse(endTimeMinutes))) < Duration.zero) {
+          now.difference(now.copyWith(hour: int.parse(endTimehours), minute: int.parse(endTimeMinutes))) < Duration.zero) {
         return (PeriodNumber(period, startTimeString, endTimeString, true));
       } else {
         return (PeriodNumber(period, startTimeString, endTimeString, false));
@@ -405,10 +413,10 @@ class _PeriodColumnState extends State<PeriodColumn> {
   void initState() {
     super.initState();
     Timer.periodic(Duration(seconds: 5), (timer) {
-      setState(() {
-      
-    },
-    );});
+      setState(
+        () {},
+      );
+    });
   }
 
   @override

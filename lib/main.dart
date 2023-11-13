@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vertretungsplan/Screens/home.dart';
 import 'package:vertretungsplan/Screens/course_selection.dart';
 import 'package:vertretungsplan/Screens/login.dart';
+import 'package:vertretungsplan/Screens/grade_selection.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 
@@ -37,8 +38,10 @@ class _MyAppState extends State<MyApp> {
       ),
       routes: {
         "/" : (context) => const Home(),
+        //"/": (context) => const GradeSelection(),
         //"/": (context) => LoginScreen(),
         "/home" : (context) => const Home(),
+        "/gradeSelection": (context) => const GradeSelection(),
         "/selectionScreen" : (context) => const SelectionScreen(),
         "/login": (context) => const LoginScreen(),
       },
